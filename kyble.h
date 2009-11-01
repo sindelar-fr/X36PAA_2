@@ -19,6 +19,7 @@ typedef struct vertex {
    unsigned backptr;           /* kudy vedla cesta do tohoto uzlu */
    unsigned count;             /* vzdalenost od pocatecniho stavu (pocet operaci) */
    unsigned hits;              /* pocet navstiveni daneho uzlu */
+   unsigned priority;          /**priorita pro prioritni frontu**/
    } vertex;
 
 

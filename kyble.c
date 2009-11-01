@@ -14,7 +14,7 @@
 /* #define DEBUGO           /* Control prints - operations */
 /* #define DEBUGQ           /* Control prints - queue */
 #define HARDERR          /* Pri preteceni fronty program skonci */
-
+#define MIN_MERGESORT_LIST_SIZE    32
 #define MAXVERTEX 100000  /* max. pocet uzlu grafu stav. prostoru */
 #define MAXQUEUE  30000   /* max. pocet rozpracovanych uzlu */
 #define MAXBUCKET 5       /* run-time max. pocet kyblu */
@@ -35,11 +35,11 @@ time_t t;
 /* Konvence: prvni prvek v poli vertices (tj. 0) musi zustat prazdny */
 
 void set_final_buckets(void) {
-    final_buckets[0] = 14;
-    final_buckets[1] = 4;
-    final_buckets[2] = 5;
-    final_buckets[3] = 0;
-    final_buckets[4] = 4;
+    final_buckets[0] = 0;
+    final_buckets[1] = 9;
+    final_buckets[2] = 6;
+    final_buckets[3] = 3;
+    final_buckets[4] = 1;
     final_buckets[5] = 3;
     final_buckets[6] = 3;
     final_buckets[7] = 3;
@@ -50,8 +50,8 @@ void set_final_buckets(void) {
 void set_full_buckets(void) {
     full_buckets[0] = 14;
     full_buckets[1] = 10;
-    full_buckets[2] = 6;
-    full_buckets[3] = 2;
+    full_buckets[2] = 12;
+    full_buckets[3] = 3;
     full_buckets[4] = 8;
     full_buckets[5] = 3;
     full_buckets[6] = 3;
@@ -79,7 +79,7 @@ unsigned set_initial_buckets(void) {
     (vertices + b)->backptr = 0; /* pocatecni stav nema predchudce */
     (vertices + b)->bucket[0] = 0;
     (vertices + b)->bucket[1] = 0;
-    (vertices + b)->bucket[2] = 1;
+    (vertices + b)->bucket[2] = 0;
     (vertices + b)->bucket[3] = 0;
     (vertices + b)->bucket[4] = 0;
     (vertices + b)->bucket[5] = 0;
@@ -349,6 +349,68 @@ void save(unsigned temp, unsigned prev) {
         }
         b = (vertices + b)->backptr;
     }
+}
+
+void priority(unsigned state) {
+    /* vypocte prioritu daneho stavu
+     * pokud se vsechny kybliky rovnaji...priorita 6
+     * pokud jeden ne ... priorita 5 ...atd
+     */
+    unsigned a = 0, priority =MAXBUCKET+1;
+    vertex *buckets;
+    buckets = (vertices + state);
+    for (a = 0; a < MAXBUCKET; a++) if (buckets->bucket[a] != final_buckets[a]) priority --;
+    buckets.priority=priority;
+}
+
+void sort(unsigned a[], int size, unsigned temp[]){
+       int i1, i2, tempi;
+       vertex * bucket1;
+       vertex * bucket2;
+    if (size < MIN_MERGESORT_LIST_SIZE) {
+        /* Use insertion sort */
+        int i;
+        for (i=0; i < size; i++) {
+            int j, v = a[i];
+            for (j = i - 1; j >= 0; j--) {
+               if (a[j] <= v) break;
+                a[j + 1] = a[j];
+            }
+            a[j + 1] = v;
+        }
+        return;
+    }
+
+    sort(a, size/2, temp);
+    sort(a + size/2, size - size/2, temp);
+    i1 = 0;
+    i2 = size/2;
+    tempi = 0;
+    while (i1 < size/2 && i2 < size) {
+        bucket1 = vertices + i1;
+        bucket2 = vertices + i2;
+        if ( bucket1.priority < bucket2.priority) {
+            temp[tempi] = a[i1];
+            i1++;
+        } else {
+            temp[tempi] = a[i2];
+            i2++;
+        }
+        tempi++;
+    }
+
+    while (i1 < size/2) {
+        temp[tempi] = a[i1];
+        i1++;
+        tempi++;
+    }
+    while (i2 < size) {
+        temp[tempi] = a[i2];
+        i2++;
+        tempi++;
+    }
+
+    memcpy(a, temp, size*sizeof(unsigned));
 }
 
 void insert(unsigned state) {
