@@ -10,7 +10,10 @@
 #include <stdlib.h>
 #include <time.h>
 
-/*#define DEBUG            /* Control prints */
+#define prior
+
+#define heur2
+/* #define DEBUG            /* Control prints */
 /* #define DEBUGO           /* Control prints - operations */
 /* #define DEBUGQ           /* Control prints - queue */
 #define HARDERR          /* Pri preteceni fronty program skonci */
@@ -351,75 +354,61 @@ void save(unsigned temp, unsigned prev) {
     }
 }
 
-void priority(unsigned state) {
-    /* vypocte prioritu daneho stavu
-     * pokud se vsechny kybliky rovnaji...priorita 6
-     * pokud jeden ne ... priorita 5 ...atd
-     */
-    unsigned a = 0, priority =MAXBUCKET+1;
-    vertex *buckets;
-    buckets = (vertices + state);
-    for (a = 0; a < MAXBUCKET; a++) if (buckets->bucket[a] != final_buckets[a]) priority --;
-    buckets.priority=priority;
-}
 
-void sort(unsigned a[], int size, unsigned temp[]){
-       int i1, i2, tempi;
-       vertex * bucket1;
-       vertex * bucket2;
-    if (size < MIN_MERGESORT_LIST_SIZE) {
-        /* Use insertion sort */
-        int i;
-        for (i=0; i < size; i++) {
-            int j, v = a[i];
-            for (j = i - 1; j >= 0; j--) {
-               if (a[j] <= v) break;
-                a[j + 1] = a[j];
+
+void priorita(unsigned state) {
+    unsigned priority = 0;
+    unsigned i, j;
+    vertex * buckets = (vertices + state);
+    for (i = 0; i < MAXBUCKET; ++i) {
+        for (j = 0; j < MAXBUCKET; ++j) {
+            if (buckets->bucket[i] == final_buckets[j]) {
+                if (i == j) {
+                    #ifdef heur2
+                    priority += 2;
+                    #else
+                    priority += 1;
+                    #endif
+                } else {
+                    priority += 1;
+                }
             }
-            a[j + 1] = v;
         }
-        return;
     }
-
-    sort(a, size/2, temp);
-    sort(a + size/2, size - size/2, temp);
-    i1 = 0;
-    i2 = size/2;
-    tempi = 0;
-    while (i1 < size/2 && i2 < size) {
-        bucket1 = vertices + i1;
-        bucket2 = vertices + i2;
-        if ( bucket1.priority < bucket2.priority) {
-            temp[tempi] = a[i1];
-            i1++;
-        } else {
-            temp[tempi] = a[i2];
-            i2++;
-        }
-        tempi++;
-    }
-
-    while (i1 < size/2) {
-        temp[tempi] = a[i1];
-        i1++;
-        tempi++;
-    }
-    while (i2 < size) {
-        temp[tempi] = a[i2];
-        i2++;
-        tempi++;
-    }
-
-    memcpy(a, temp, size*sizeof(unsigned));
+    buckets->priority = priority;
 }
 
-void insert(unsigned state) {
+void seradit(unsigned state) {
+    unsigned a;
+    unsigned i = last - 1;
+    while (i != first) {
+        if ((vertices + queue[(i - 1) % MAXQUEUE])->priority < (vertices + queue[i])->priority) {
+            a = queue[i];
+            queue[i] = queue[(i - 1) % MAXQUEUE];
+            queue[(i - 1) % MAXQUEUE] = a;
+        }
+        i = (i - 1) % MAXQUEUE;
+    }
+}
+
+void vloz(unsigned state) {
     unsigned i;
     for (i = 0; i < ffree; i++) {
         if (compare(ffree, i)) return;
     }
+
+#ifdef prior
+
+    priorita(ffree);
+#endif
+
     putvertex(state);
     enqueue(ffree - 1);
+
+#ifdef prior
+   seradit(state);
+#endif
+
 }
 
 void search(void) {
@@ -433,20 +422,20 @@ void search(void) {
             /*printf("a");*/
             printf("Nalezeno reseni: %d\n", state);
             fprintf(trace, "Nalezeno reseni: %d\n", state);
-            return;
+            break;
         }
         /*nalit*/
         for (i = 0; i < MAXBUCKET; i++) {
             if (!isfull(state, i)) {
                 fill(state, i);
-                insert(state);
+                vloz(state);
             }
         }
         /*vylit*/
         for (i = 0; i < MAXBUCKET; i++) {
             if (!isempty(state, i)) {
                 empty(state, i);
-                insert(state);
+                vloz(state);
             }
         }
 
@@ -455,7 +444,7 @@ void search(void) {
             for (j = 0; j < MAXBUCKET; j++) {
                 if (!isempty(state, i) && (!isfull(state, j))) {
                     pour(state, i, j);
-                    insert(state);
+                    vloz(state);
                 }
             }
         }
